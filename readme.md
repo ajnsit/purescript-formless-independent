@@ -1,31 +1,28 @@
-# Formless
+# Concur-Formless
 
-[![CircleCI](https://circleci.com/gh/thomashoneyman/purescript-halogen-formless/tree/master.svg?style=shield)](https://circleci.com/gh/thomashoneyman/purescript-halogen-formless/tree/master)
-[![Latest release](http://img.shields.io/github/release/thomashoneyman/purescript-halogen-formless.svg)](https://github.com/thomashoneyman/purescript-halogen-formless/releases)
-[![Maintainer: thomashoneyman](https://img.shields.io/badge/maintainer-thomashoneyman-lightgrey.svg)](http://github.com/thomashoneyman)
+Concur-Formless is a library for [Concur](https://github.com/ajnsit/purescript-concur) which helps you build forms. Provide Formless with some initial inputs, and validation to run on those inputs, and it will handle the tedious parts of managing form state, errors, submission, and more.
 
-Formless is a [renderless component](https://github.com/thomashoneyman/purescript-halogen-renderless) which helps you build forms in Halogen. Provide Formless with some initial inputs, validation to run on those inputs, and a render function, and the component will handle the tedious parts of managing form state, errors, submission, and more.
+You can write a complete Concur form component with multiple fields, validation, parsing, and errors in less than 100 lines of code (only ~20 lines of which are from Formless).
 
-You can write a complete Halogen form component with multiple fields, validation, parsing, and errors in less than 100 lines of code (only ~20 lines of which are from Formless).
+*TODO: Write more examples*
 
-- [Live examples / docs site](https://thomashoneyman.github.io/purescript-halogen-formless/)
-- [Source code for examples](https://github.com/thomashoneyman/purescript-halogen-formless/tree/master/example)
+### Attribution
 
-Have any comments about the library or any ideas to improve it for your use case? Please file an issue, send me an email, or reach out on the [PureScript user group](https://discourse.purescript.org).
+Concur-Formless is basically a port of [Formless](https://github.com/thomashoneyman/purescript-halogen-formless) for Halogen to Concur.
 
 ### Installation
 
 Install with Bower:
 
 ```sh
-bower i --save purescript-halogen-formless
+bower i --save purescript-concur-formless
 ```
+
+*TODO: Use Spago*
 
 # Overview
 
-The default approach to forms in Halogen is to write a component and, for every field in your form, queries to handle changes on those fields and validation. Each form field lives in the state type along with validation results, summary information (like whether fields have been edited), and a possible form output.
-
-Formless helps abstract away most of the messy details of managing form state without imposing any restrictions on how you render your form.
+Concur makes writing forms [easy](https://github.com/ajnsit/concur-documentation#replicating-elm-architecture), but handling changes for each field and their validations, and then handling errors can quickly become tedious. Formless helps abstract away most of the messy details of managing form state without imposing any restrictions on how you render your form.
 
 To demonstrate, let's build a signup form in Formless.
 
@@ -126,22 +123,18 @@ data Error
 
 </details>
 
-## Component Inputs
+## Form Inputs
 
-Now that we have a form type and an output type we can produce the `Input` type that the Formless component requires. While we'll take a closer look at each of these types in the next few sections, here's a quick primer on what these types are:
+We need a few more types to specify our form behaviour. While we'll take a closer look at each of these types in the next few sections, here's a quick primer on what these types are:
 
 - `initialInputs`: Your `Form` newtype around a record, where each field contains its initial, starting value
-- `validators`: Your `Form` newtype around a record, where each field contains a validation function which will process its input value
-- `render`: The render function the component will use, which is the standard `State -> HTML` type in Halogen
+- `validators`: Your `Form` newtype around a record, where each field contains a validation function which will process its input value. Our validations can run in any monad, so it can do things like make ajax calls. Validation functions can run in `Identity` if they perform no effects, or something like `Aff` for ajax calls.
 
 ```purescript
 import Formless as F
 
-type FormlessInput m =
-  { initialInputs :: Form Record F.InputField
-  , validators :: Form Record (F.Validation Form m)
-  , render :: F.State Form m -> F.HTML' Form m
-  }
+initialInputs :: Form Record F.InputField
+validators :: Form Record (F.Validation Form Aff)
 ```
 
 ### Form Inputs
@@ -296,40 +289,50 @@ validators = Form
 
 Note how validators can be composed: `validEmail` takes a `String` and produces an `Email`, which is then passed to `emailNotUsed`, which takes an `Email` and produces an `Email`. You can use this to build up validators that change a field's output type over time. Composition with `>>>` will short-circuit on the first failure.
 
-### Render Function
+### Building the form
 
-The last thing you're expected to provide is a render function. Formless is a renderless component, so it provides no rendering at all and expects you to provide an entire render function of the type `∀ m. F.State Form m -> F.HTML' Form m`. To learn more about renderless components, see the [purescript-halogen-renderless](https://github.com/thomashoneyman/purescript-halogen-renderless) library.
+The last thing you're expected to do is compose the form fields together into a form. Formless allows you to handle rendering in any way you want, and provides a few parts to plumb pieces together.
 
-The main things to keep in mind when writing a render function for Formless:
+While rendering the form, you can use helper functions to get various parts of a field, given a field label; these include `getInput`, `getResult`, `getError`, and more.
 
-- You can pass arguments to the function before it is given to Formless (like your parent state). When the parent component re-renders, these values will be given to Formless anew.
-- You can extend Formless' functionality by embedding your own queries in the render function with `Raise`
-- You can mount external components inside Formless and control them from the parent with `send` and `send'`
-- You should use `F.set` to set a field's value, `F.modify` to modify a field with a function, `F.validate` to validate fields, and `F.setValidate` or `F.modifyValidate` to do both at the same time
-- If you want to avoid running expensive or long-running validations on each key press, use the asynchronous versions (`F.asyncSetValidate`, etc.) and provide a number of milliseconds to debounce. You can use `getResult` to show a loading spinner when the result is `Validating`.
-- If you need to chain multiple operations, you can use `F.andThen` to provide multiple Formless queries
-- There are functions to get various parts of a field, given a symbol; these include `getInput`, `getResult`, `getError`, and more.
-
-Let's write a render function using `setValidate`, `asyncSetValidate`, and `getInput`, using symbol proxies we've defined in the `where` clause:
+User events on your form should return values of the type `Query form` which represents all the actions you can take on a form data in response to user input. You can use the various helper functions defined in `Formless.Query` to construct them. Then you can use `eval` to apply the changes to the form data.
 
 ```purescript
-renderFormless :: ∀ m. F.State Form m -> F.HTML' Form m
-renderFormless fstate =
-  HH.div_
-  [ HH.input
-    [ HP.value $ F.getInput _name fstate.form
-    , HE.onValueInput $ HE.input $ F.setValidate _name
+type Query form
+eval :: Query form -> m (Maybe (form Record OutputField))
+```
+
+`eval` returns `Just output` if the form was successfully submitted, or `Nothing` if the user did not submit the form, or the submission was not successful.
+
+Here's some more information on the query helpers:
+- You should use `F.set` to set a field's value, `F.modify` to modify a field with a function, `F.validate` to validate fields, and `F.setValidate` or `F.modifyValidate` to do both at the same time
+- You should use `F.submit` to submit the form
+- If you want to avoid running expensive or long-running validations on each key press, use the asynchronous versions (`F.asyncSetValidate`, etc.) and provide a number of milliseconds to debounce. You can use `getResult` to show a loading spinner when the result is `Validating`.
+- If you need to chain multiple operations, you can use `F.andThen` to provide multiple Formless queries
+
+Let's write a form widget using `setValidate`, `asyncSetValidate`, and `getInput`, using symbol proxies we've defined in the `where` clause. We use `StateT` to allow access to the form state:
+
+```purescript
+formStWidget :: StateT (F.State form Aff) (Widget HTML) (form Record F.OutputField)
+formStWidget = do
+  fstate <- get
+  query <- D.div'
+    [ D.input
+      [ P.value $ F.getInput _name fstate.form
+      , (F.set _name <<< P.unsafeTargetValue) <$> P.onChange
+      ]
+    , D.input
+      [ P.value $ F.getInput _email1 fstate.form
+        -- This will help us avoid hitting the server on every single key press.
+      , (F.asyncSetValidate debounceTime _email1 <<< P.unsafeTargetValue) <$> P.onChange
+      ]
+    , D.input
+      [ P.value $ F.getInput _email2 fstate.form
+      , (F.asyncSetValidate debounceTime _email2 <<< P.unsafeTargetValue) <$> P.onChange
+      ]
     ]
-  , HH.input
-    [ HP.value $ F.getInput _email1 fstate.form
-      -- This will help us avoid hitting the server on every single key press.
-    , HE.onValueInput $ HE.input $ F.asyncSetValidate debounceTime _email1
-    ]
-  , HH.input
-    [ HP.value $ F.getInput _email2 fstate.form
-    , HE.onValueInput $ HE.input $ F.asyncSetValidate debounceTime _email2
-    ]
-  ]
+  res <- eval query
+  maybe formStWidget pure res
   where
     _name = SProxy :: SProxy "name"
     _email1 SProxy :: SProxy "email1"
@@ -350,56 +353,28 @@ x = prx.name
 
 Now, instead of writing out proxies over and over, you can just import the proxies record!
 
-## Mounting The Component
+## Using the Widget elsewhere
 
-Whew! With those three functions and the `Form` type, we've now got everything necessary to run Formless. Let's bring it all together by mounting the component and handling its `Submitted` output message:
+Whew! Now we have a nicely encapsulated form which can be used on other parts of our application.
 
 ```purescript
 import Formless as F
 
-data Query a
-  = Formless (F.Message' Form) a
+main :: Effect Unit
+main = runWidgetInDom "form" (formWidget initialInputs formValidators)
 
-type ChildQuery = F.Query' Form Aff
-type ChildSlot = Unit
+formWidget :: InputForm -> Validators -> Widget HTML (form Record F.OutputField)
+formWidget initForm initValidators = fst <$> runStateT formStWidget (initState initForm initValidators)
 
-component :: H.Component HH.HTML Query Unit Void Aff
-component = H.parentComponent
-  { initialState: const unit
-  , render
-  , eval
-  , receiver: const Nothing
-  }
-
-  where
-
-  render :: Unit -> H.ParentHTML Query ChildQuery ChildSlot Aff
-  render st =
-    HH.div_
-    [ HH.h1 "My Form"
-    , HH.slot unit F.component
-        { initialInputs, validators, render: renderFormless }
-        (HE.input Formless)
+page :: forall a. Widget HTML a
+page = do
+  out <- D.div'
+    [ D.h1' [D.text "My Form"]
+    , formWidget initialInputs validators
     ]
-
-  eval :: Query ~> H.ParentDSL Unit Query ChildQuery ChildSlot Void Aff
-  eval (Formless m a) = case m of
-    F.Submitted formOutput -> a <$ do
-      let form = F.unwrapOutputFields formOutput
-      -- Assuming some effectful computation to receive the ID
-      id <- registerUser { name: form.name, email: form.email1 }
-      let user = { name: form.name, email: form.email, id }
-      liftEffect $ Console.log $ "Got a user! " <> show (user :: User)
-    _ -> pure a
+  let form = F.unwrapOutputFields out
+  -- Assuming some effectful computation to receive the ID
+  id <- registerUser { name: form.name, email: form.email1 }
+  let user = { name: form.name, email: form.email, id }
+  liftEffect $ Console.log $ "Got a user! " <> show (user :: User)
 ```
-
-# Next Steps
-
-Ready to move past this simple example? Check out the examples, which vary in their complexity:
-
-- [Live examples / docs site](https://thomashoneyman.github.io/purescript-halogen-formless/)
-- [Source code for examples](https://github.com/thomashoneyman/purescript-halogen-formless/tree/master/example)
-
-If you're curious to learn more about how to use renderless components effectively, or build your own:
-
-- [purescript-halogen-renderless](https://github.com/thomashoneyman/purescript-halogen-renderless)

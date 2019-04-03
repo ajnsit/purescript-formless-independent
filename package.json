@@ -1,8 +1,8 @@
 {
-  "name": "purescript-halogen-formless",
+  "name": "purescript-concur-formless",
   "version": "0.0.1",
-  "repository": "git@github.com:thomashoneyman/purescript-halogen-formless",
-  "author": "Thomas R. Honeyman <admin@thomashoneyman.com>",
+  "repository": "git@github.com:ajnsit/purescript-concur-formless",
+  "author": "Anupam Jain <ajnsit@gmail.com>",
   "license": "MIT",
   "scripts": {
     "postinstall": "bower i --silent",

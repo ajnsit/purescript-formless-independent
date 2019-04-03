@@ -1,13 +1,14 @@
 {
-  "name": "purescript-halogen-formless",
+  "name": "purescript-concur-formless",
   "authors": [
+    "Anupam Jain <ajnsit@gmail.com>",
     "Thomas R. Honeyman <admin@thomashoneyman.com>"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/thomashoneyman/purescript-halogen-formless",
+  "homepage": "https://github.com/ajnsit/purescript-concur-formless",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thomashoneyman/purescript-halogen-formless.git"
+    "url": "https://github.com/ajnsit/purescript-concur-formless.git"
   },
   "private": true,
   "ignore": [
