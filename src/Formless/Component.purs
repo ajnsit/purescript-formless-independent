@@ -2,22 +2,21 @@ module Formless.Component where
 
 import Prelude
 
-import Control.Monad.State.Class (class MonadState, get, modify, modify_)
-import Control.Monad.Trans.Class (class MonadTrans, lift)
+import Data.Either (Either(..))
 import Data.Eq (class EqRecord)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, over, unwrap)
 import Data.Variant (Variant)
 import Formless.Data.FormFieldResult (FormFieldResult)
 import Formless.Internal.Transform as Internal
-import Formless.Types.Query (InternalState(..), Query(..), State, ValidStatus(..))
 import Formless.Types.Form (FormField, InputField, InputFunction, OutputField, U)
+import Formless.Types.Query (InternalState(..), Query(..), State, ValidStatus(..))
 import Formless.Validation (Validation)
 import Prim.RowList as RL
 import Unsafe.Coerce (unsafeCoerce)
 
 eval
-  :: forall form t m is ixs ivs fs fxs us vs os ifs ivfs
+  :: forall form m is ixs ivs fs fxs us vs os ifs ivfs
   .  RL.RowToList is ixs
   => RL.RowToList fs fxs
   => EqRecord ixs is
@@ -38,47 +37,38 @@ eval
   => Newtype (form Variant InputField) (Variant ivs)
   => Newtype (form Variant InputFunction) (Variant ivfs)
   => Newtype (form Variant U) (Variant us)
-  -- AJ: TODO: Not quite happy with the dependency on MonadTrans for state
-  -- Validations can run in a smaller monad 'm'
-  => MonadState (State form m) (t m)
-  => MonadTrans t
   => Monad m
   => Query form
-  -> t m (Maybe (form Record OutputField))
-eval query = case query of
+  -> State form m
+  -> m (Either (State form m) (form Record OutputField))
+eval query st = case query of
 
   Modify variant -> do
-    modify_ \st -> st {form = Internal.unsafeModifyInputVariant identity variant st.form}
-    syncFormData
+    syncFormData $ st {form = Internal.unsafeModifyInputVariant identity variant st.form}
 
   Validate variant -> do
-    st <- get
-    form' <- lift $ Internal.unsafeRunValidationVariant variant (unwrap st.internal).validators st.form
-    modify_ \s -> s {form = form'}
-    syncFormData
+    form' <- Internal.unsafeRunValidationVariant variant (unwrap st.internal).validators st.form
+    syncFormData $ st {form = form'}
 
   -- Provided as a separate query to minimize state updates / re-renders
   ModifyValidate milliseconds variant -> do
     let
       modifyWith
         :: (forall e o. FormFieldResult e o -> FormFieldResult e o)
-        -> t m (form Record FormField)
-      modifyWith f = do
-        s <- modify \st -> st { form = Internal.unsafeModifyInputVariant f variant st.form }
-        pure s.form
+        -> State form m
+        -> State form m
+      modifyWith f st' = st' { form = Internal.unsafeModifyInputVariant f variant st'.form }
 
-      validate = do
-        st <- get
-        let vs = (unwrap st.internal).validators
-        form <- lift $ Internal.unsafeRunValidationVariant (unsafeCoerce variant) vs st.form
-        modify_ \s -> s { form = form }
-        pure form
+      validate st' = do
+        let vs = (unwrap st'.internal).validators
+        form <- Internal.unsafeRunValidationVariant (unsafeCoerce variant) vs st'.form
+        pure $ st' { form = form }
 
     case milliseconds of
       Nothing -> do
-        _ <- modifyWith identity
-        _ <- validate
-        syncFormData
+        let st' = modifyWith identity st
+        st'' <- validate st'
+        syncFormData st''
       Just ms -> do
         -- AJ: TODO: debounce
         -- debounceForm
@@ -86,45 +76,34 @@ eval query = case query of
         --   (modifyWith identity)
         --   (modifyWith (const Validating) *> validate)
         --   (eval $ SyncFormData a)
-        _ <- modifyWith identity
-        _ <- validate
-        syncFormData
+        let st' = modifyWith identity st
+        st'' <- validate st'
+        syncFormData st''
 
   Reset variant -> do
-    modify_ \st -> st
+    syncFormData $ st
       { form = Internal.unsafeModifyInputVariant identity variant st.form
       , internal = over InternalState (_ { allTouched = false }) st.internal
       }
-    syncFormData
 
   SetAll formInputs -> do
-    new <- modify \st -> st
+    syncFormData $ st
       { form = Internal.replaceFormFieldInputs formInputs st.form }
-    -- AJ: TODO: Why is this here? Rerender??
-    -- H.raise $ Changed $ getPublicState new
-    syncFormData
 
   ModifyAll formInputs -> do
-    new <- modify \st -> st
+    syncFormData $ st
       { form = Internal.modifyAll formInputs st.form }
-    -- AJ: TODO: Why is this here? Rerender??
-    -- H.raise $ Changed $ getPublicState new
-    syncFormData
 
   ValidateAll -> do
-    st <- get
-    form <- lift $ Internal.validateAll (unwrap st.internal).validators st.form
-    modify_ _ { form = form }
-    syncFormData
+    form <- Internal.validateAll (unwrap st.internal).validators st.form
+    syncFormData $ st {form = form}
 
   -- Submit, also raising a message to the user
-  Submit -> runSubmit
-    -- AJ: TODO: Why is this here? Rerender??
-    -- traverse_ Submitted mbForm
+  Submit -> runSubmit st
 
   -- | Should completely reset the form to its initial state
   ResetAll -> do
-    modify_ \st -> st
+    pure $ Left $ st
       { validity = Incomplete
       , dirty = false
       , errors = 0
@@ -133,12 +112,9 @@ eval query = case query of
       , form = Internal.replaceFormFieldInputs (unwrap st.internal).initialInputs st.form
       , internal = over InternalState (_ { allTouched = false }) st.internal
       }
-    pure Nothing
-    -- AJ: TODO: Why is this here? Rerender??
-    -- H.raise $ Changed $ getPublicState new
 
   LoadForm formInputs -> do
-    modify_ \st -> st
+    pure $ Left $ st
       { validity = Incomplete
       , dirty = false
       , errors = 0
@@ -154,78 +130,75 @@ eval query = case query of
           )
           st.internal
       }
-    pure Nothing
-    -- AJ: TODO: Why is this here? Rerender??
-    -- H.raise $ Changed $ getPublicState new
-
-  -- Receive { render, validators } a -> do
-  --   let applyOver = over InternalState (_ { validators = validators })
-  --   modifyStore_ render (\st -> st { internal = applyOver st.internal })
-  --   pure a
 
   AndThen q1 q2 -> do
-    void (eval q1)
-    void (eval q2)
-    pure Nothing
+    r1 <- eval q1 st
+    case r1 of
+      Left st' -> eval q2 st'
+      Right form -> pure (Right form)
 
   where
 
   -- Sync the overall state of the form after an individual field change or overall validation.
-  syncFormData = do
-    st <- get
+  syncFormData stt = do
 
-    let errors = Internal.countErrors st.form
+    let errors = Internal.countErrors stt.form
         dirty = not $ eq
-          (unwrap (Internal.formFieldsToInputFields st.form))
-          (unwrap (unwrap st.internal).initialInputs)
+          (unwrap (Internal.formFieldsToInputFields stt.form))
+          (unwrap (unwrap stt.internal).initialInputs)
 
     -- Need to verify the validity status of the form.
-    case (unwrap st.internal).allTouched of
-      true -> modify_ \s -> s
-        { validity = if not (st.errors == 0) then Invalid else Valid
+    pure $ Left $ case (unwrap stt.internal).allTouched of
+      true -> stt
+        { validity = if not (stt.errors == 0) then Invalid else Valid
         , errors = errors
         , dirty = dirty
         }
 
       -- If not all fields are touched, then we need to quickly sync the form state
       -- to verify this is actually the case.
-      _ -> case Internal.allTouched st.form of
+      _ -> case Internal.allTouched stt.form of
 
         -- The sync revealed all fields really have been touched
-        true -> modify_ \s -> s
-          { validity = if not (st.errors == 0) then Invalid else Valid
-          , internal = over InternalState (_ { allTouched = true }) st.internal
+        true -> stt
+          { validity = if not (stt.errors == 0) then Invalid else Valid
+          , internal = over InternalState (_ { allTouched = true }) stt.internal
           , errors = errors
           , dirty = dirty
           }
 
         -- The sync revealed that not all fields have been touched
-        _ -> modify_ \s -> s { validity = Incomplete, errors = errors, dirty = dirty }
-
-    pure Nothing
+        _ -> stt { validity = Incomplete, errors = errors, dirty = dirty }
 
   -- Run submission without raising messages or replies
-  runSubmit = do
-    init <- modify \st -> st
-      { submitAttempts = st.submitAttempts + 1
-      , submitting = true
-      }
+  runSubmit stt = do
+    let init = stt
+          { submitAttempts = stt.submitAttempts + 1
+          , submitting = true
+          }
 
     -- For performance purposes, avoid running this if possible
     let internal = unwrap init.internal
-    when (not internal.allTouched) do
-      modify_ \st -> st
-        { form = Internal.setFormFieldsTouched init.form
-        , internal = over InternalState (_ { allTouched = true }) init.internal
-        }
+    let init' =
+          if not internal.allTouched
+            then init
+              { form = Internal.setFormFieldsTouched init.form
+              , internal = over InternalState (_ { allTouched = true }) init.internal
+              }
+            else init
 
     -- Necessary to validate after fields are touched, but before parsing
-    _ <- eval ValidateAll
-
-    -- For performance purposes, only attempt to submit if the form is valid
-    validated <- get
-    modify_ \st -> st { submitting = false }
-    pure $
-      if validated.validity == Valid
-      then Internal.formFieldsToMaybeOutputFields validated.form
-      else Nothing
+    est <- eval ValidateAll init'
+    case est of
+      -- This should never happen, because just validation can't submit the form
+      Right form -> pure (Right form)
+      -- This will always happen
+      Left validated -> do
+        -- For performance purposes, only attempt to submit if the form is valid
+        let validated' = validated { submitting = false }
+        pure $
+          if validated'.validity == Valid
+          then case Internal.formFieldsToMaybeOutputFields validated.form of
+            Nothing -> Left validated'
+            Just form -> Right form
+          else Left validated'
