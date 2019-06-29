@@ -313,7 +313,7 @@ Here's some more information on the query helpers:
 Let's write a form widget using `setValidate`, `asyncSetValidate`, and `getInput`, using symbol proxies we've defined in the `where` clause. We use `StateT` to allow access to the form state:
 
 ```purescript
-formStWidget :: StateT (F.State form Aff) (Widget HTML) (form Record F.OutputField)
+formStWidget :: ∀ form. StateT (F.State form Aff) (Widget HTML) (form Record F.OutputField)
 formStWidget = do
   fstate <- get
   query <- D.div'
@@ -331,11 +331,11 @@ formStWidget = do
       , (F.asyncSetValidate debounceTime _email2 <<< P.unsafeTargetValue) <$> P.onChange
       ]
     ]
-  res <- eval query
+  res <- F.eval query
   maybe formStWidget pure res
   where
     _name = SProxy :: SProxy "name"
-    _email1 SProxy :: SProxy "email1"
+    _email1 = SProxy :: SProxy "email1"
     _email2 = SProxy :: SProxy "email2"
     debounceTime = Milliseconds 300.0
 ```
