@@ -1,34 +1,36 @@
-# Concur-Formless
+# Formless-Independent
 
-Concur-Formless is a library for [Concur](https://github.com/ajnsit/purescript-concur) which helps you build forms. Provide Formless with some initial inputs, and validation to run on those inputs, and it will handle the tedious parts of managing form state, errors, submission, and more.
+Formless-Independent is a general purpose form library for purescript, independent of any UI frameworks. Provide Formless with some initial inputs, and validation to run on those inputs, and it will handle the tedious parts of managing form state, errors, submission, and more.
 
-You can write a complete Concur form component with multiple fields, validation, parsing, and errors in less than 100 lines of code (only ~20 lines of which are from Formless).
+### Origin Story / Attribution
 
-*TODO: Write more examples*
-
-### Attribution
-
-Concur-Formless is basically a port of [Formless](https://github.com/thomashoneyman/purescript-halogen-formless) for Halogen to Concur.
+Formless-Independent is basically [Formless](https://github.com/thomashoneyman/purescript-halogen-formless), but with all the Halogen or UI specific bits ripped out, and the interface adapted to enable it to work with any framework. It was earlier released as [Concur-Formless](https://github.com/ajnsit/purescript-concur-formless) for use with the Concur UI library, but I realised that it didn't need to have a dependency on Concur either. Now it's truly independent.
 
 ### Installation
 
 Install with Bower:
 
 ```sh
-bower i --save purescript-concur-formless
+bower i --save purescript-formless-independent
 ```
 
-*TODO: Use Spago*
+Or Spago -
+
+```sh
+spago install --save purescript-formless-independent
+```
 
 # Overview
 
-Concur makes writing forms [easy](https://github.com/ajnsit/concur-documentation#replicating-elm-architecture), but handling changes for each field and their validations, and then handling errors can quickly become tedious. Formless helps abstract away most of the messy details of managing form state without imposing any restrictions on how you render your form.
+Writing forms is not simple. Handling changes for each field and their validations, and then handling errors can quickly become tedious. Formless helps abstract away most of the messy details of managing form state without imposing any restrictions on how you render your form.
 
-To demonstrate, let's build a signup form in Formless.
+To demonstrate, let's build a signup form in Formless. We'll use [Concur](https://github.com/ajnsit/purescript-concur) for the view layer.
 
 ## Data Types
 
-We'll start with the data type we want our form to result in: a `User`.
+### Step 1:
+
+Define the data type we want our form to result in: a `User`.
 
 ```purescript
 type User =
@@ -38,12 +40,20 @@ type User =
   }
 ```
 
-This is the data type we'll use throughout our application, but our form will have different fields altogether: we want them to provide two email addresses for confirmation purposes, and we don't have an ID for them until the form has been submitted.
+Easy-peasy.
 
-Formless requires a specific shape from your `Form` data type. You are expected to write a newtype that takes two arguments, `r` and `f` below, and a row containing the fields in your form.
+### Step 2:
+
+Define the **Form** Type.
+
+Formless doesn't require the type of the form, and the type of the result type to match.
+
+`User` is the result data type we'll use throughout our application, but our form will have different fields altogether: we want them to provide two email addresses for confirmation purposes, and we don't have an ID for them until the form has been submitted.
+
+Formless requires a specific shape from our `Form` data type. We are expected to write a newtype that takes two arguments, `r` and `f` below, and a row containing the fields in the form.
 
 <details>
-  <summary>Expand to read about these two type arguments</summary>
+  <summary>**Expand to read about these two type arguments**</summary>
 The first argument has the kind `(# Type -> Type)` and turns a row of types into a concrete type. For example, you can fill in `Record` to get a record; `Record (name :: String)` is the same as `{ name :: String }`. However, Formless will often fill in `Variant` internally. This lets the library access the entire form at once (`Record`) or a single field (`Variant`) to perform various operations. The important thing is that you make sure this variable is left free in your `Form` newtype.
 
 The second argument has the kind `(Type -> Type -> Type -> Type)` and will be filled in with one of many types Formless uses internally to manage your form. It expects an error type, an input type, and an output type for the field in question.
@@ -56,22 +66,22 @@ Every field should use the second argument, `f`, and provide it with three type 
 - an `input` type, which represents the value the user will provide when interacting with the field
 - an `output` type, which represents the type you'd like to result from successful validation
 
-Here's what our form type looks like:
+Here's how we need to define our form type:
 
 ```purescript
 -- Note: Common practice to use `Void` to represent "no error possible"
-newtype Form r f = Form (r
+newtype UserForm r f = UserForm (r
   ( name   :: f Error String String -- | String input to String output, or Error on failed validation
   , email1 :: f Error String Email  -- | String input to Email output, or Error on failed validation
   , email2 :: f Error String Email  -- | String input to Email output, or Error on failed validation
   ))
-derive instance newtypeForm :: Newtype (Form r f) _
+derive instance newtypeUserForm :: Newtype (UserForm r f) _
 ```
 
 Formless will use this type to perform all kinds of transformations and track data about your form over time. You simply need to decide what fields will exist and what their error, input, and output types are.
 
 <details>
-  <summary>Expand to read a longer explanation of this form type</summary>
+  <summary>**Expand to read a longer explanation of this form type**</summary>
 
 This can be a scary type to look at, but it's not so bad once you provide concrete types for `r` and `f`. For example, let's try providing `Record` and the `OutputType` type from Formless:
 
@@ -109,7 +119,7 @@ myForm2 = Form
 </details>
 
 <details>
-  <summary>Expand to see the definition of the <code>Error</code> and <code>Email</code> types</summary>
+  <summary>**Expand to see the definition of the <code>Error</code> and <code>Email</code> types**</summary>
 
 ```purescript
 newtype Email = Email String
@@ -123,43 +133,46 @@ data Error
 
 </details>
 
-## Form Inputs
+## Form Behaviour
 
-We need a few more types to specify our form behaviour. While we'll take a closer look at each of these types in the next few sections, here's a quick primer on what these types are:
+We need to define 2 values which will completely specify our form behaviour.
 
-- `initialInputs`: Your `Form` newtype around a record, where each field contains its initial, starting value
-- `validators`: Your `Form` newtype around a record, where each field contains a validation function which will process its input value. Our validations can run in any monad, so it can do things like make ajax calls. Validation functions can run in `Identity` if they perform no effects, or something like `Aff` for ajax calls.
+Let's first define some helpers (TODO: Need to move these into Formless).
 
 ```purescript
-import Formless as F
-
-initialInputs :: Form Record F.InputField
-validators :: Form Record (F.Validation Form Aff)
+type UserInputForm = UserForm Record F.InputField
+type UserOutputForm = UserForm Record F.OutputField
+type UserValidators = UserForm Record (F.Validation UserForm (Widget HTML))
+type UserFormState = F.State UserForm (Widget HTML)
 ```
 
-### Form Inputs
+### Step 3: Initial Input Values
 
-The first thing Formless requires is a record of the fields in your form with their initial values. It has the type `Form Record F.InputField`. Remember: `Form` is our custom newtype we defined a moment ago, and it was awaiting a type that would be applied to the error, input, and output types we defined for each field -- like `F.InputField`!
+Define the initial form input values. These are the values that will be displayed when the form is first rendered. It has the type `Form Record F.InputField`. Remember: `Form` is our custom newtype we defined a moment ago, and it was awaiting a type that would be applied to the error, input, and output types we defined for each field -- like `F.InputField`!
+
+<details>
+  <summary>**Expand to see how Formless defines InputField**</summary>
 
 ```purescript
 newtype InputField error input output = InputField input
 ```
+</details>
 
 Applied to our form, an `InputField` represents the input type only. We can give Formless a valid record of inputs by just supplying concrete input values for each field:
 
 ```purescript
-inputs :: Form Record F.InputField
-inputs = Form
+inputs :: UserInputForm
+inputs = UserForm
   { name: InputField ""
   , email1: InputField ""
   , email2: InputField ""
   }
 ```
 
-It's a little tedious writing out all those newtypes, so `Formless.Spec.Transform` provides helper functions to generate them for you:
+**OR** It's a little tedious writing out all those newtypes, so `Formless.Spec.Transform` provides helper functions to generate them for you:
 
 ```purescript
-inputs :: Form Record F.InputField
+inputs :: UserInputForm
 inputs = F.wrapInputFields
   { name: ""
   , email1: ""
@@ -167,54 +180,36 @@ inputs = F.wrapInputFields
   }
 ```
 
-In fact, you don't even have to do this: if your input types belong to the `Formless.Initial` type class (all monoidal values do), it can generate the values for you from a proxy for your form:
+**OR** you don't even have to do this: if your input types belong to the `Formless.Initial` type class (all monoidal values do), it can generate the values for you from a proxy for your form:
 
 ```purescript
 proxy = F.FormProxy :: F.FormProxy Form
 
-inputs :: Form Record F.InputField
+inputs :: UserInputForm
 inputs = F.mkInputFields proxy
 ```
 
-### Validation
+### Step 3: Define our Validations
 
 The next thing Formless requires is a record of validators: functions that will be run on the form to validate the inputs and produce the specified output types. Every field in this record ought to use the Formless `Validation` type:
 
+<details>
+  <summary>**Expand to see how Formless defines Validation type**</summary>
+  
 ```purescript
 newtype Validation form m error input output
   = Validation (form Record FormField -> input -> m (Either error output))
 ```
+</details>
 
-This type represents a function which takes your entire form, the input for this particular field, and produces either an error or result.
+A Validation type represents a function which takes your entire form, the input for this particular field, and produces either an error or result.
 
 - This function can be monadic, so you can do things like confirm with a server that an email is not already in use.
 - This function takes your entire form as an argument, so you can use the values of other fields during validation. For example, you could verify that two password fields are equal to one another.
 - If you are using `purescript-validation` and already have a composed validation function that results in `V`, then you can convert it into a Formless validator with `hoistFnE_ <<< Data.Validation.Semigroup.toEither` (or the `Semiring` module).
 
-The `FormField` newtype represents the state of every field in the form:
-
-```purescript
-newtype FormField error input output = FormField
-  { -- The value the user will input
-    input :: input
-    -- Whether the field has been modified yet (validators ignore untouched fields)
-  , touched :: Boolean
-    -- The result of validation, IF validation has been run on this field
-  , result :: FormFieldResult error output
-  }
-```
-
-A field's result can be in one of several states, represented by the `FormFieldResult` type:
-
-```purescript
-data FormFieldResult e o
-  = NotValidated
-  | Validating -- Useful to display a loading spinner during asynchronous / long validations
-  | Error e
-  | Success o
-```
-
-Let's see some examples of validators written in this style:
+<details>
+  <summary>**Expand to see some examples of validators written in this style**</summary>
 
 ```purescript
 -- This helper function lets you take any function from `input` to `output` and turns it into
@@ -275,12 +270,13 @@ equalsEmail1 = hoistFnE $ \form str ->
         then Right str
         else Left $ NotEqual str e1
 ```
+</details>
 
 These validators are building blocks that you can compose together to validate any particular field. Now that we've got some validation functions we can provide our `validators` record to Formless:
 
 ```purescript
-validators :: Form Record (F.Validation Form Aff)
-validators = Form
+validators :: UserValidators
+validators = UserForm
   { name: isNonEmpty
   , email1: isNonEmpty >>> validEmail >>> emailNotUsed
   , email2: isNonEmpty >>> equalsEmail1 >>> emailNotUsed
@@ -289,20 +285,13 @@ validators = Form
 
 Note how validators can be composed: `validEmail` takes a `String` and produces an `Email`, which is then passed to `emailNotUsed`, which takes an `Email` and produces an `Email`. You can use this to build up validators that change a field's output type over time. Composition with `>>>` will short-circuit on the first failure.
 
-### Building the form
+### Step 4: Render the form
 
-The last thing you're expected to do is compose the form fields together into a form. Formless allows you to handle rendering in any way you want, and provides a few parts to plumb pieces together.
+The last thing you're expected to do is compose the form fields together into a rendered form. Formless allows you to handle rendering in any way you want, and provides a few parts to plumb pieces together.
 
 While rendering the form, you can use helper functions to get various parts of a field, given a field label; these include `getInput`, `getResult`, `getError`, and more.
 
-User events on your form should return values of the type `Query form` which represents all the actions you can take on a form data in response to user input. You can use the various helper functions defined in `Formless.Query` to construct them. Then you can use `eval` to apply the changes to the form data.
-
-```purescript
-type Query form
-eval :: Query form -> m (Maybe (form Record OutputField))
-```
-
-`eval` returns `Just output` if the form was successfully submitted, or `Nothing` if the user did not submit the form, or the submission was not successful.
+User events on your form should return values of the type `Query form` which represents all the actions you can take on a form data in response to user input. You can use the various helper functions defined in `Formless.Query` to construct them.
 
 Here's some more information on the query helpers:
 - You should use `F.set` to set a field's value, `F.modify` to modify a field with a function, `F.validate` to validate fields, and `F.setValidate` or `F.modifyValidate` to do both at the same time
@@ -310,35 +299,38 @@ Here's some more information on the query helpers:
 - If you want to avoid running expensive or long-running validations on each key press, use the asynchronous versions (`F.asyncSetValidate`, etc.) and provide a number of milliseconds to debounce. You can use `getResult` to show a loading spinner when the result is `Validating`.
 - If you need to chain multiple operations, you can use `F.andThen` to provide multiple Formless queries
 
-Let's write a form widget using `setValidate`, `asyncSetValidate`, and `getInput`, using symbol proxies we've defined in the `where` clause. We use `StateT` to allow access to the form state:
+Let's render the form we have built using the [Concur](https://github.com/ajnsit/purescript-concur) UI framework. Notice how the result type of the renderer is the `Query`.
 
 ```purescript
-formStWidget :: ∀ form. StateT (F.State form Aff) (Widget HTML) (form Record F.OutputField)
-formStWidget = do
-  fstate <- get
+renderFormWidget :: UserFormState -> Widget HTML (Query UserForm)
+renderFormWidget st = do
   query <- D.div'
     [ D.input
       [ P.value $ F.getInput _name fstate.form
       , (F.set _name <<< P.unsafeTargetValue) <$> P.onChange
       ]
+    , errorDisplay $ F.getError _name fstate.form
     , D.input
       [ P.value $ F.getInput _email1 fstate.form
         -- This will help us avoid hitting the server on every single key press.
       , (F.asyncSetValidate debounceTime _email1 <<< P.unsafeTargetValue) <$> P.onChange
       ]
+    , errorDisplay $ F.getError _email1 fstate.form
     , D.input
       [ P.value $ F.getInput _email2 fstate.form
       , (F.asyncSetValidate debounceTime _email2 <<< P.unsafeTargetValue) <$> P.onChange
       ]
+    , errorDisplay $ F.getError _email2 fstate.form
     ]
-  res <- F.eval query
-  maybe formStWidget pure res
   where
     _name = SProxy :: SProxy "name"
     _email1 = SProxy :: SProxy "email1"
     _email2 = SProxy :: SProxy "email2"
     debounceTime = Milliseconds 300.0
 ```
+
+<details>
+  <summary>**Expand to see an easier way to write symbol proxies**</summary>
 
 It can be tedious to write out symbol proxies for every field you want to access in a form. You can instead generate a record of these proxies automatically using the `mkSProxies` function:
 
@@ -353,28 +345,58 @@ x = prx.name
 
 Now, instead of writing out proxies over and over, you can just import the proxies record!
 
-## Using the Widget elsewhere
+</details>
 
-Whew! Now we have a nicely encapsulated form which can be used on other parts of our application.
+### Step 5: Handle events by evaluate the Query and updating the state
+
+When we obtain a Query from the rendering function in response to a user event, we must use the `F.eval` function to evaluate the query and update the form state data.
+
+<details>
+  <summary>**Expand to see the type of the eval function**</summary>
+  
+```purescript
+type Query form
+eval :: Query form -> m (Maybe (form Record OutputField))
+```
+</details>
+
+`eval` returns `Right outputForm` if the form was successfully submitted, or `Left state` if the state changed, but the form was not submitted, or the submission was not successful. When we have an updated state, we can rerender the form with the updated state.
+
+We can extract the fields from the `outputForm` using a helper function `F.unwrapOutputFields`.
+
+Once again, using Concur, we can wrap this render, update, loop into a nice little Widget -
+
+```
+formWidget :: UserFormState -> Widget HTML User
+formWidget st = do
+  query <- renderFormWidget st
+  res <- F.eval query st
+  case res of
+    Left st' -> formWidget st'
+    Right form -> do
+      let values = F.unwrapOutputFields form
+      -- Assuming some effectful computation to receive the ID
+      id <- registerUser { name: form.name, email: form.email1 }
+      let user = { id, name: form.name, email: form.email }
+      pure user
+```
+
+**Whew!** Now we have a nicely encapsulated form which can be used on other parts of our application.
+
+
+## Using the Widget elsewhere
 
 ```purescript
 import Formless as F
 
 main :: Effect Unit
-main = runWidgetInDom "form" (formWidget initialInputs formValidators)
+main = runWidgetInDom "root" page
 
-formWidget :: InputForm -> Validators -> Widget HTML (form Record F.OutputField)
-formWidget initForm initValidators = fst <$> runStateT formStWidget (initState initForm initValidators)
-
-page :: forall a. Widget HTML a
+page :: Widget HTML Unit
 page = do
-  out <- D.div'
-    [ D.h1' [D.text "My Form"]
-    , formWidget initialInputs validators
+  user <- D.div'
+    [ D.h1' [D.text "Contact Form"]
+    , formWidget (initState initialInputs validators)
     ]
-  let form = F.unwrapOutputFields out
-  -- Assuming some effectful computation to receive the ID
-  id <- registerUser { name: form.name, email: form.email1 }
-  let user = { name: form.name, email: form.email, id }
   liftEffect $ Console.log $ "Got a user! " <> show (user :: User)
 ```
