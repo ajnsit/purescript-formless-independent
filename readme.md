@@ -17,7 +17,7 @@ bower i --save purescript-formless-independent
 Or Spago -
 
 ```sh
-spago install --save purescript-formless-independent
+spago install purescript-formless-independent
 ```
 
 # Overview
