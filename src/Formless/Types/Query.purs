@@ -8,8 +8,10 @@ import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Data.Variant (Variant)
 import Effect.Aff (Milliseconds)
+import Formless.Internal.Transform (class InputFieldsToFormFields, inputFieldsToFormFields)
 import Formless.Types.Form (FormField, InputField, InputFunction, U)
 import Formless.Validation (Validation)
+import Prim.RowList as RL
 
 -- | The component query type. See Formless.Query for helpers related
 -- | to constructing and using these queries.
@@ -74,3 +76,31 @@ derive instance ordValidStatus :: Ord ValidStatus
 
 instance showValidStatus :: Show ValidStatus where
   show = genericShow
+
+-- | Initialise the form state with default values.
+-- | Passing in the initial inputs, and the validations.
+initFormState
+  :: ∀ ixs form is fs m
+   . RL.RowToList is ixs
+  => InputFieldsToFormFields ixs is fs
+  => Newtype (form Record InputField) { | is }
+  => Newtype (form Record FormField) { | fs }
+  => form Record InputField
+  -> form Record (Validation form m)
+  -> State form m
+initFormState form validations =
+  { validity: Incomplete
+  , dirty: false
+  , submitting: false
+  , errors: 0
+  , submitAttempts: 0
+  , form: inputFieldsToFormFields form
+  , internal: InternalState
+      { initialInputs: form
+      , validators: validations
+      , allTouched: false
+      -- TODO
+      -- , debounceRef: ...
+      -- , validationRef: ...
+      }
+  }
