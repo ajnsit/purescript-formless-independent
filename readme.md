@@ -299,7 +299,11 @@ Here's some more information on the query helpers:
 - If you want to avoid running expensive or long-running validations on each key press, use the asynchronous versions (`F.asyncSetValidate`, etc.) and provide a number of milliseconds to debounce. You can use `getResult` to show a loading spinner when the result is `Validating`.
 - If you need to chain multiple operations, you can use `F.andThen` to provide multiple Formless queries
 
-Let's render the form we have built using the [Concur](https://github.com/ajnsit/purescript-concur) UI framework. Notice how the result type of the renderer is the `Query`.
+Let's render the form we have built using the [Concur](https://github.com/ajnsit/purescript-concur) UI framework.
+
+Notice how the result type of the renderer is the `Query`.
+
+Also note how we fetch and display the error messages associated with each field.
 
 ```purescript
 renderFormWidget :: UserFormState -> Widget HTML (Query UserForm)
@@ -327,6 +331,7 @@ renderFormWidget st = do
     _email1 = SProxy :: SProxy "email1"
     _email2 = SProxy :: SProxy "email2"
     debounceTime = Milliseconds 300.0
+    errorDisplay = maybe mempty (\err -> D.div [P.style {color: "red"}] [D.text $ V.toText err])
 ```
 
 <details>
