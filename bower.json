@@ -1,14 +1,14 @@
 {
-  "name": "purescript-concur-formless",
+  "name": "purescript-formless-independent",
   "authors": [
     "Anupam Jain <ajnsit@gmail.com>",
     "Thomas R. Honeyman <admin@thomashoneyman.com>"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/ajnsit/purescript-concur-formless",
+  "homepage": "https://github.com/ajnsit/purescript-formless-independent",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ajnsit/purescript-concur-formless.git"
+    "url": "https://github.com/ajnsit/purescript-formless-independent.git"
   },
   "private": true,
   "ignore": [
