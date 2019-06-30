@@ -371,7 +371,7 @@ We can extract the fields from the `outputForm` using a helper function `F.unwra
 
 Once again, using Concur, we can wrap this render, update, loop into a nice little Widget -
 
-```
+```purescript
 formWidget :: UserFormState -> Widget HTML User
 formWidget st = do
   query <- renderFormWidget st
