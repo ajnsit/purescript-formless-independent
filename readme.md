@@ -189,7 +189,7 @@ inputs :: UserInputForm
 inputs = F.mkInputFields proxy
 ```
 
-### Step 3: Define our Validations
+### Step 4: Define our Validations
 
 The next thing Formless requires is a record of validators: functions that will be run on the form to validate the inputs and produce the specified output types. Every field in this record ought to use the Formless `Validation` type:
 
@@ -285,7 +285,7 @@ validators = UserForm
 
 Note how validators can be composed: `validEmail` takes a `String` and produces an `Email`, which is then passed to `emailNotUsed`, which takes an `Email` and produces an `Email`. You can use this to build up validators that change a field's output type over time. Composition with `>>>` will short-circuit on the first failure.
 
-### Step 4: Render the form
+### Step 5: Render the form
 
 The last thing you're expected to do is compose the form fields together into a rendered form. Formless allows you to handle rendering in any way you want, and provides a few parts to plumb pieces together.
 
@@ -347,7 +347,7 @@ Now, instead of writing out proxies over and over, you can just import the proxi
 
 </details>
 
-### Step 5: Handle events by evaluate the Query and updating the state
+### Step 6: Handle events by evaluate the Query and updating the state
 
 When we obtain a Query from the rendering function in response to a user event, we must use the `F.eval` function to evaluate the query and update the form state data.
 
