@@ -381,8 +381,8 @@ formWidget st = do
     Right form -> do
       let values = F.unwrapOutputFields form
       -- Assuming some effectful computation to receive the ID
-      id <- registerUser { name: form.name, email: form.email1 }
-      let user = { id, name: form.name, email: form.email }
+      id <- registerUser { name: values.name, email: values.email1 }
+      let user = { id, name: values.name, email: values.email1 }
       pure user
 ```
 
