@@ -54,3 +54,9 @@ type InputType error input output = input
 -- | A type synonym that lets you pick out just the output type from
 -- | your form row.
 type OutputType error input output = output
+
+-- | A type synonym that represents a record with the input fields of a form.
+type InputForm form = form Record InputField
+
+-- | A type synonym that represents a record with the output fields of a form.
+type OutputForm form = form Record OutputField

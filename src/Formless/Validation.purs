@@ -105,3 +105,6 @@ data EmptyValidators = EmptyValidators
 -- | The heterogeneous instance the noValidation function
 instance emptyValidators :: Monad m => Mapping EmptyValidators a (Validation form m e i i) where
   mapping EmptyValidators = const (hoistFn_ identity)
+
+-- | A type synonym that represents a set of form validations that run in a particular monad.
+type Validations form m = form Record (Validation form m)
