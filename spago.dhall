@@ -6,13 +6,11 @@ You can edit this file as you like.
     "formless-independent"
 , dependencies =
     [ "aff"
-    , "console"
     , "datetime"
     , "effect"
     , "generics-rep"
     , "heterogeneous"
     , "profunctor-lenses"
-    , "psci-support"
     , "variant"
     ]
 , packages =

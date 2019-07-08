@@ -28,6 +28,5 @@
     "purescript-profunctor-lenses": "^6.2.0",
     "purescript-variant": "^6.0.1"
   },
-  "devDependencies": {
-  }
+  "devDependencies": {}
 }

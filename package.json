@@ -1,24 +1,21 @@
 {
   "name": "purescript-formless-independent",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "repository": "git@github.com:ajnsit/purescript-formless-independent",
   "author": "Anupam Jain <ajnsit@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "postinstall": "bower i --silent",
-    "clean": "rm -rf bower_components node_modules output",
-    "build": "pulp build",
-    "watch": "pulp -w build",
-    "test": "pulp test",
-    "build-all": "pulp build -I example --to index.js",
-    "build-aj": "pulp build -I aj --to index.js",
-    "watch-all": "pulp -w build -I example --to index.js"
+    "clean": "rm -rf node_modules output",
+    "build": "spago build",
+    "test": "spago test",
+    "build-all": "spago build -I example --to index.js",
+    "build-aj": "spago build -I aj --to index.js",
+    "generate-bower": "node generate-bower.js"
   },
   "devDependencies": {
-    "purescript": "^0.13.0",
-    "purescript-psa": "^0.7.3",
+    "parcel-bundler": "^1.12.3",
+    "rimraf": "^2.6.3",
     "spago": "^0.8.5"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }
