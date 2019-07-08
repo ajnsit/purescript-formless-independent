@@ -10,7 +10,6 @@
     "type": "git",
     "url": "https://github.com/ajnsit/purescript-formless-independent.git"
   },
-  "private": true,
   "ignore": [
     "**/.*",
     "node_modules",
