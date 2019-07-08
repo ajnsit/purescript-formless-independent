@@ -25,7 +25,7 @@ import Formless.Data.FormFieldResult (FormFieldResult(..), _Error, _Success, fro
 import Formless.Retrieve (FormFieldGet, FormFieldLens, GetAll, GetError(..), GetInputField(..), GetOutput(..), GetResultField(..), GetTouchedField(..), _Field, _FieldError, _FieldInput, _FieldOutput, _FieldResult, _FieldTouched, getError, getErrorAll, getField, getInput, getInputAll, getOutput, getOutputAll, getResult, getResultAll, getTouched, getTouchedAll)
 import Formless.Transform.Record (UnwrapField(..), WrapField(..), unwrapOutputFields, unwrapRecord, wrapInputFields, wrapInputFunctions, wrapRecord)
 import Formless.Transform.Row (class MakeInputFieldsFromRow, class MakeSProxies, SProxies, makeSProxiesBuilder, mkInputFields, mkInputFieldsFromRowBuilder, mkSProxies)
-import Formless.Types.Query (InternalState(..), PublicState, Query(..), State, StateRow, ValidStatus(..))
+import Formless.Types.Query (InternalState(..), PublicState, Query(..), State, StateRow, ValidStatus(..), initFormState)
 import Formless.Types.Form (ErrorType, FormField(..), FormFieldRow, FormProxy(..), InputField(..), InputFunction(..), InputType, OutputField(..), OutputType, U(..))
 import Formless.Validation (EmptyValidators(..), Validation(..), hoistFn, hoistFnE, hoistFnE_, hoistFnME, hoistFnME_, hoistFn_, noValidation, runValidation)
 import Formless.Query (andThen, asyncModifyValidate, asyncSetValidate, loadForm, loadForm_, modify, modifyAll, modifyValidate, modifyValidateAll, reset, resetAll, set, setAll, setValidate, setValidateAll, submit, validate, validateAll)
