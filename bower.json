@@ -5,10 +5,10 @@
     "Thomas R. Honeyman <admin@thomashoneyman.com>"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/ajnsit/purescript-formless-aj",
+  "homepage": "https://github.com/ajnsit/purescript-formless-independent",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ajnsit/purescript-formless-aj.git"
+    "url": "https://github.com/ajnsit/purescript-formless-independent.git"
   },
   "private": true,
   "ignore": [
