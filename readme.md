@@ -8,16 +8,18 @@ Formless-Independent is basically [Formless](https://github.com/thomashoneyman/p
 
 ### Installation
 
+Currently the library is released as `formless-aj` to avoid clashing with an official future lib with the name `formless-independent`. The creation of such a lib is being tracked [here](https://github.com/thomashoneyman/purescript-halogen-formless/issues/52).
+
 Install with Bower:
 
 ```sh
-bower i --save purescript-formless-independent
+bower i --save purescript-formless-aj
 ```
 
 Or Spago -
 
 ```sh
-spago install purescript-formless-independent
+spago install purescript-formless-aj
 ```
 
 # Overview
@@ -195,7 +197,7 @@ The next thing Formless requires is a record of validators: functions that will 
 
 <details>
   <summary>**Expand to see how Formless defines Validation type**</summary>
-  
+
 ```purescript
 newtype Validation form m error input output
   = Validation (form Record FormField -> input -> m (Either error output))
@@ -358,7 +360,7 @@ When we obtain a Query from the rendering function in response to a user event, 
 
 <details>
   <summary>**Expand to see the type of the eval function**</summary>
-  
+
 ```purescript
 type Query form
 eval :: Query form -> m (Maybe (form Record OutputField))

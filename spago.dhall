@@ -3,7 +3,7 @@ Welcome to a Spago project!
 You can edit this file as you like.
 -}
 { name =
-    "formless-independent"
+    "formless-aj"
 , dependencies =
     [ "aff"
     , "datetime"

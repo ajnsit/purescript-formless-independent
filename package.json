@@ -1,7 +1,7 @@
 {
-  "name": "purescript-formless-independent",
+  "name": "purescript-formless-aj",
   "version": "0.1.0",
-  "repository": "git@github.com:ajnsit/purescript-formless-independent",
+  "repository": "git@github.com:ajnsit/purescript-formless-aj",
   "author": "Anupam Jain <ajnsit@gmail.com>",
   "license": "MIT",
   "scripts": {
