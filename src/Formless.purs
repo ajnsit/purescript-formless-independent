@@ -1,7 +1,7 @@
 -- | Formless is a renderless component to help you build forms
--- | in Halogen. This module re-exports all public functions and
--- | types from the library, and can be used as the single import
--- | for most use cases.
+-- | in a UI independent way. This module re-exports all public
+-- | functions and types from the library, and can be used as
+-- | the single import for most use cases.
 -- |
 -- | ```purescript
 -- | import Formless as F
