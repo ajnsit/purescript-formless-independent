@@ -310,23 +310,26 @@ Also note how we fetch and display the error messages associated with each field
 ```purescript
 renderFormWidget :: UserFormState -> Widget HTML (Query UserForm)
 renderFormWidget st = do
-  query <- D.div'
+  D.div'
     [ D.input
-      [ P.value $ F.getInput _name fstate.form
+      [ P.value $ F.getInput _name st.form
       , (F.set _name <<< P.unsafeTargetValue) <$> P.onChange
       ]
-    , errorDisplay $ F.getError _name fstate.form
+    , errorDisplay $ F.getError _name st.form
     , D.input
-      [ P.value $ F.getInput _email1 fstate.form
+      [ P.value $ F.getInput _email1 st.form
         -- This will help us avoid hitting the server on every single key press.
       , (F.asyncSetValidate debounceTime _email1 <<< P.unsafeTargetValue) <$> P.onChange
       ]
-    , errorDisplay $ F.getError _email1 fstate.form
+    , errorDisplay $ F.getError _email1 st.form
     , D.input
-      [ P.value $ F.getInput _email2 fstate.form
+      [ P.value $ F.getInput _email2 st.form
       , (F.asyncSetValidate debounceTime _email2 <<< P.unsafeTargetValue) <$> P.onChange
       ]
-    , errorDisplay $ F.getError _email2 fstate.form
+    , errorDisplay $ F.getError _email2 st.form
+    , D.button
+      [ F.submit <$ P.onClick ]
+      [ D.text "Submit" ]
     ]
   where
     _name = SProxy :: SProxy "name"
@@ -403,7 +406,7 @@ page :: Widget HTML Unit
 page = do
   user <- D.div'
     [ D.h1' [D.text "Contact Form"]
-    , formWidget (initState initialInputs validators)
+    , formWidget (F.initFormState initialInputs validators)
     ]
   liftEffect $ Console.log $ "Got a user! " <> show (user :: User)
 ```
