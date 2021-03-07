@@ -3,7 +3,7 @@ module Formless.Types.Query where
 import Prelude
 
 import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
+import Data.Show.Generic (genericShow)
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Data.Variant (Variant)
@@ -15,6 +15,7 @@ import Prim.RowList as RL
 
 -- | The component query type. See Formless.Query for helpers related
 -- | to constructing and using these queries.
+data Query :: forall k1 k2. ((Row Type -> Type) -> (k1 -> Type -> k2 -> Type) -> Type) -> Type
 data Query form
   = Modify (form Variant InputFunction)
   | Validate (form Variant U)

@@ -3,7 +3,7 @@ module Formless.Class.Initial where
 import Prelude
 
 import Data.List (List)
-import Data.Map (Map)
+import Data.Map (SemigroupMap)
 import Data.Maybe (Maybe(..))
 import Data.Monoid (class MonoidRecord)
 import Data.Tuple (Tuple(..))
@@ -46,7 +46,7 @@ instance initialArray :: Initial (Array a) where
 instance initialList :: Initial (List a) where
   initial = mempty
 
-instance initialMap :: Ord k => Initial (Map k v) where
+instance initialMap :: (Ord k, Semigroup v) => Initial (SemigroupMap k v) where
   initial = mempty
 
 instance initialFn :: Monoid b => Initial (a -> b) where
