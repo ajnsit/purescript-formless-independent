@@ -17,7 +17,7 @@ import Record as Record
 import Record.Builder (Builder)
 import Record.Builder as Builder
 import Record.Unsafe (unsafeGet, unsafeSet)
-import Type.Data.RowList (RLProxy(..))
+import Type.Proxy as Type
 import Unsafe.Coerce (unsafeCoerce)
 
 ----------
@@ -31,6 +31,7 @@ fromScratch = Builder.build <@> {}
 type FromScratch r = Builder {} (Record r)
 
 -- | A constraint synonym for Row.Cons and Row.Lacks
+class Row1Cons :: forall k. Symbol -> k -> Row k -> Row k -> Constraint
 class (Row.Cons s t r r', Row.Lacks s r) <= Row1Cons s t r r' | s t r -> r', s r' -> t r
 instance row1Cons :: (Row.Cons s t r r', Row.Lacks s r) => Row1Cons s t r r'
 
@@ -45,7 +46,7 @@ allTouched
   => Newtype (form Record FormField) { | fs }
   => form Record FormField
   -> Boolean
-allTouched = allTouchedImpl (RLProxy :: RLProxy fxs) <<< unwrap
+allTouched = allTouchedImpl (Type.Proxy :: Type.Proxy fxs) <<< unwrap
 
 -- | A helper function that will count all errors in a record
 countErrors
@@ -55,7 +56,7 @@ countErrors
   => Newtype (form Record FormField) { | fs }
   => form Record FormField
   -> Int
-countErrors = countErrorsImpl (RLProxy :: RLProxy fxs) <<< unwrap
+countErrors = countErrorsImpl (Type.Proxy :: Type.Proxy fxs) <<< unwrap
 
 -- | A helper function that will automatically transform a record of FormField(s) into
 -- | just the input value
@@ -67,7 +68,7 @@ setFormFieldsTouched
   => form Record FormField
   -> form Record FormField
 setFormFieldsTouched r = wrap $ fromScratch builder
-  where builder = setFormFieldsTouchedBuilder (RLProxy :: RLProxy fxs) (unwrap r)
+  where builder = setFormFieldsTouchedBuilder (Type.Proxy :: Type.Proxy fxs) (unwrap r)
 
 -- | A helper function that will automatically transform a record of FormField(s) into
 -- | just the input value
@@ -80,7 +81,7 @@ formFieldsToInputFields
   => form Record FormField
   -> form Record InputField
 formFieldsToInputFields r = wrap $ fromScratch builder
-  where builder = formFieldsToInputFieldsBuilder (RLProxy :: RLProxy fxs) (unwrap r)
+  where builder = formFieldsToInputFieldsBuilder (Type.Proxy :: Type.Proxy fxs) (unwrap r)
 
 -- | A helper function that will automatically transform a record of FormSpec(s) into
 -- | a record of FormField(s).
@@ -93,7 +94,7 @@ inputFieldsToFormFields
   => form Record InputField
   -> form Record FormField
 inputFieldsToFormFields r = wrap $ fromScratch builder
-  where builder = inputFieldsToFormFieldsBuilder (RLProxy :: RLProxy ixs) (unwrap r)
+  where builder = inputFieldsToFormFieldsBuilder (Type.Proxy :: Type.Proxy ixs) (unwrap r)
 
 -- | An intermediate function that transforms a record of FormField into a record
 formFieldsToMaybeOutputFields
@@ -105,7 +106,7 @@ formFieldsToMaybeOutputFields
   => form Record FormField
   -> Maybe (form Record OutputField)
 formFieldsToMaybeOutputFields r = map wrap $ fromScratch <$> builder
-  where builder = formFieldsToMaybeOutputBuilder (RLProxy :: RLProxy fxs) (unwrap r)
+  where builder = formFieldsToMaybeOutputBuilder (Type.Proxy :: Type.Proxy fxs) (unwrap r)
 
 replaceFormFieldInputs
   :: ∀ fxs form fs is
@@ -117,7 +118,7 @@ replaceFormFieldInputs
   -> form Record FormField
   -> form Record FormField
 replaceFormFieldInputs is fs = wrap $ fromScratch builder
-  where builder = replaceFormFieldInputsBuilder (unwrap is) (RLProxy :: RLProxy fxs) (unwrap fs)
+  where builder = replaceFormFieldInputsBuilder (unwrap is) (Type.Proxy :: Type.Proxy fxs) (unwrap fs)
 
 modifyAll
   :: ∀ fxs form fs ifs
@@ -129,7 +130,7 @@ modifyAll
   -> form Record FormField
   -> form Record FormField
 modifyAll ifs fs = wrap $ fromScratch builder
-  where builder = modifyAllBuilder (unwrap ifs) (RLProxy :: RLProxy fxs) (unwrap fs)
+  where builder = modifyAllBuilder (unwrap ifs) (Type.Proxy :: Type.Proxy fxs) (unwrap fs)
 
 validateAll
   :: ∀ vs fxs form fs m
@@ -143,7 +144,7 @@ validateAll
   -> m (form Record FormField)
 validateAll vs fs = map wrap $ fromScratch <$> builder
   where
-    builder = validateAllBuilder (unwrap vs) (RLProxy :: RLProxy fxs) (unwrap fs)
+    builder = validateAllBuilder (unwrap vs) (Type.Proxy :: Type.Proxy fxs) (unwrap fs)
 
 
 ----------
@@ -199,8 +200,9 @@ unsafeRunValidationVariant var vs rec = rec2
 -- Classes (Internal)
 
 -- | The class that provides the Builder implementation to set all form fields touched
-class SetFormFieldsTouched (xs :: RL.RowList) (row :: # Type) (to :: # Type) | xs -> to where
-  setFormFieldsTouchedBuilder :: RLProxy xs -> Record row -> FromScratch to
+class SetFormFieldsTouched :: forall k. k -> Row Type -> Row Type -> Constraint
+class SetFormFieldsTouched xs (row :: Prim.Row Type) (to :: Prim.Row Type) | xs -> to where
+  setFormFieldsTouchedBuilder :: Type.Proxy xs -> Record row -> FromScratch to
 
 instance setFormFieldsTouchedNil :: SetFormFieldsTouched RL.Nil row () where
   setFormFieldsTouchedBuilder _ _ = identity
@@ -217,7 +219,7 @@ instance setFormFieldsTouchedCons
     where
       _name = SProxy :: SProxy name
       val = over FormField (_ { touched = true }) $ Record.get _name r
-      rest = setFormFieldsTouchedBuilder (RLProxy :: RLProxy tail) r
+      rest = setFormFieldsTouchedBuilder (Type.Proxy :: Type.Proxy tail) r
       first = Builder.insert _name val
 
 ----------
@@ -225,8 +227,9 @@ instance setFormFieldsTouchedCons
 
 -- | The class that provides the Builder implementation to efficiently transform the record
 -- | of FormField to record of InputField.
-class FormFieldsToInputFields (xs :: RL.RowList) (row :: # Type) (to :: # Type) | xs -> to where
-  formFieldsToInputFieldsBuilder :: RLProxy xs -> Record row -> FromScratch to
+class FormFieldsToInputFields :: forall k. k -> Row Type -> Row Type -> Constraint
+class FormFieldsToInputFields xs (row :: Prim.Row Type) (to :: Prim.Row Type) | xs -> to where
+  formFieldsToInputFieldsBuilder :: Type.Proxy xs -> Record row -> FromScratch to
 
 instance inputFieldsToInputNil :: FormFieldsToInputFields RL.Nil row () where
   formFieldsToInputFieldsBuilder _ _ = identity
@@ -243,7 +246,7 @@ instance inputFieldsToInputCons
     where
       _name = SProxy :: SProxy name
       val = transform $ Record.get _name r
-      rest = formFieldsToInputFieldsBuilder (RLProxy :: RLProxy tail) r
+      rest = formFieldsToInputFieldsBuilder (Type.Proxy :: Type.Proxy tail) r
       first = Builder.insert _name val
       transform (FormField fs) = InputField fs.input
 
@@ -252,8 +255,9 @@ instance inputFieldsToInputCons
 
 -- | The class that provides the Builder implementation to efficiently transform the record
 -- | of InputField to record of FormField.
-class InputFieldsToFormFields (xs :: RL.RowList) (row :: # Type) (to :: # Type) | xs -> to where
-  inputFieldsToFormFieldsBuilder :: RLProxy xs -> Record row -> FromScratch to
+class InputFieldsToFormFields :: forall k. k -> Row Type -> Row Type -> Constraint
+class InputFieldsToFormFields xs (row :: Prim.Row Type) (to :: Prim.Row Type) | xs -> to where
+  inputFieldsToFormFieldsBuilder :: Type.Proxy xs -> Record row -> FromScratch to
 
 instance inputFieldsToFormFieldsNil :: InputFieldsToFormFields RL.Nil row () where
   inputFieldsToFormFieldsBuilder _ _ = identity
@@ -270,18 +274,18 @@ instance inputFieldsToFormFieldsCons
     where
       _name = SProxy :: SProxy name
       val = transform $ Record.get _name r
-      rest = inputFieldsToFormFieldsBuilder (RLProxy :: RLProxy tail) r
+      rest = inputFieldsToFormFieldsBuilder (Type.Proxy :: Type.Proxy tail) r
       first = Builder.insert _name val
       transform (InputField input) = FormField { input, touched: false, result: NotValidated }
 
 ----------
 -- Flip all form fields if valid
-
 -- | The class that provides the Builder implementation to efficiently transform the record
 -- | of MaybeOutput to a record of OutputField, but only if all fs were successfully
 -- | validated.
-class FormFieldToMaybeOutput (xs :: RL.RowList) (row :: # Type) (to :: # Type) | xs -> to where
-  formFieldsToMaybeOutputBuilder :: RLProxy xs -> Record row -> Maybe (FromScratch to)
+class FormFieldToMaybeOutput :: forall k. k -> Row Type -> Row Type -> Constraint
+class FormFieldToMaybeOutput xs (row :: Prim.Row Type) (to :: Prim.Row Type) | xs -> to where
+  formFieldsToMaybeOutputBuilder :: Type.Proxy xs -> Record row -> Maybe (FromScratch to)
 
 instance formFieldsToMaybeOutputNil :: FormFieldToMaybeOutput RL.Nil row () where
   formFieldsToMaybeOutputBuilder _ _ = Just identity
@@ -302,14 +306,15 @@ instance formFieldsToMaybeOutputCons
       val = OutputField <$> toMaybe (unwrap $ Record.get _name r).result
 
       rest :: Maybe (FromScratch from)
-      rest = formFieldsToMaybeOutputBuilder (RLProxy :: RLProxy tail) r
+      rest = formFieldsToMaybeOutputBuilder (Type.Proxy :: Type.Proxy tail) r
 
       transform :: OutputField e i o -> FromScratch from -> FromScratch to
       transform v builder' = Builder.insert _name v <<< builder'
 
 -- | A class to check if all fs in an FormField record have been touched or not
-class CountErrors (rl :: RL.RowList) (r :: # Type) where
-  countErrorsImpl :: RLProxy rl -> Record r -> Int
+class CountErrors :: forall k. k -> Row Type -> Constraint
+class CountErrors rl (r :: Prim.Row Type) where
+  countErrorsImpl :: Type.Proxy rl -> Record r -> Int
 
 instance nilCountErrors :: CountErrors RL.Nil r where
   countErrorsImpl _ _ = 0
@@ -325,14 +330,15 @@ instance consCountErrors
       let res = case (unwrap $ Record.get (SProxy :: SProxy name) r).result of
             Error _ -> 1
             _ -> 0
-      res + countErrorsImpl (RLProxy :: RLProxy tail) r
+      res + countErrorsImpl (Type.Proxy :: Type.Proxy tail) r
 
 ----------
 -- Check if all form fields are touched
 
 -- | A class to check if all fs in an FormField record have been touched or not
-class AllTouched (rl :: RL.RowList) (r :: # Type) where
-  allTouchedImpl :: RLProxy rl -> Record r -> Boolean
+class AllTouched :: forall k. k -> Row Type -> Constraint
+class AllTouched rl (r :: Prim.Row Type) where
+  allTouchedImpl :: Type.Proxy rl -> Record r -> Boolean
 
 instance nilAllTouched :: AllTouched RL.Nil r where
   allTouchedImpl _ _ = true
@@ -346,15 +352,16 @@ instance consAllTouched
   where
     allTouchedImpl _ r =
       if (unwrap $ Record.get (SProxy :: SProxy name) r).touched
-        then allTouchedImpl (RLProxy :: RLProxy tail) r
+        then allTouchedImpl (Type.Proxy :: Type.Proxy tail) r
         else false
 
 ----------
 -- Apply form field validation
 
 -- | A class that applies the current state to the unwrapped version of every validator
-class ValidateAll (vs :: # Type) (xs :: RL.RowList) (row :: # Type) (to :: # Type) m | xs -> to where
-  validateAllBuilder :: Record vs -> RLProxy xs -> Record row -> m (FromScratch to)
+class ValidateAll :: forall k. Row Type -> k -> Row Type -> Row Type -> (Type -> Type) -> Constraint
+class ValidateAll (vs :: Prim.Row Type) xs (row :: Prim.Row Type) (to :: Prim.Row Type) m | xs -> to where
+  validateAllBuilder :: Record vs -> Type.Proxy xs -> Record row -> m (FromScratch to)
 
 instance applyToValidationNil :: Monad m => ValidateAll vs RL.Nil row () m where
   validateAllBuilder _ _ _ = pure identity
@@ -374,7 +381,7 @@ instance applyToValidationCons
     where
       _name = SProxy :: SProxy name
       fn val' rest' = Builder.insert _name val' <<< rest'
-      rest = validateAllBuilder vs (RLProxy :: RLProxy tail) r
+      rest = validateAllBuilder vs (Type.Proxy :: Type.Proxy tail) r
       val = do
         let validator = unwrap $ Record.get _name vs
             formField = unwrap $ Record.get _name r
@@ -385,8 +392,9 @@ instance applyToValidationCons
 --------
 -- Apply modifications across a record
 
-class ModifyAll (ifs :: # Type) (xs :: RL.RowList) (fs :: # Type) (to :: # Type) | xs -> to where
-  modifyAllBuilder ::  Record ifs -> RLProxy xs -> Record fs -> FromScratch to
+class ModifyAll :: forall k. Row Type -> k -> Row Type -> Row Type -> Constraint
+class ModifyAll (ifs :: Prim.Row Type) xs (fs :: Prim.Row Type) (to :: Prim.Row Type) | xs -> to where
+  modifyAllBuilder ::  Record ifs -> Type.Proxy xs -> Record fs -> FromScratch to
 
 instance modifyAllNil :: ModifyAll ifs RL.Nil fs () where
   modifyAllBuilder _ _ _ = identity
@@ -406,14 +414,15 @@ instance modifyAllCons
       _name = SProxy :: SProxy name
       f = unwrap $ Record.get _name ifs
       field = Record.get _name r
-      rest = modifyAllBuilder ifs (RLProxy :: RLProxy tail) r
+      rest = modifyAllBuilder ifs (Type.Proxy :: Type.Proxy tail) r
       first = Builder.insert _name (over FormField (\x -> x { input = f x.input }) field)
 
 ----------
 -- Replace all form field inputs
 
-class ReplaceFormFieldInputs (is :: # Type) (xs :: RL.RowList) (fs :: # Type) (to :: # Type) | xs -> to where
-  replaceFormFieldInputsBuilder ::  Record is -> RLProxy xs -> Record fs -> FromScratch to
+class ReplaceFormFieldInputs :: forall k. Row Type ->  k -> Row Type -> Row Type -> Constraint
+class ReplaceFormFieldInputs (is :: Prim.Row Type) xs (fs :: Prim.Row Type) (to :: Prim.Row Type) | xs -> to where
+  replaceFormFieldInputsBuilder ::  Record is -> Type.Proxy xs -> Record fs -> FromScratch to
 
 instance replaceFormFieldInputsTouchedNil :: ReplaceFormFieldInputs is RL.Nil fs () where
   replaceFormFieldInputsBuilder _ _ _ = identity
@@ -433,7 +442,7 @@ instance replaceFormFieldInputsTouchedCons
       _name = SProxy :: SProxy name
       i = Record.get _name ir
       f = unwrap $ Record.get _name fr
-      rest = replaceFormFieldInputsBuilder ir (RLProxy :: RLProxy tail) fr
+      rest = replaceFormFieldInputsBuilder ir (Type.Proxy :: Type.Proxy tail) fr
       first =
         Builder.insert
           _name
